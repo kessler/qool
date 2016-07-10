@@ -1,0 +1,33 @@
+{
+  "name": "levelq",
+  "version": "0.0.1",
+  "description": "leveldb based queue service",
+  "license": "MIT",
+  "author": {
+    "name": "yaniv kessler",
+    "email": "yanivk@gmail.com"
+  },
+  "scripts": {
+    "test": "mocha test/**/*.js"
+  },
+  "dependencies": {
+    "debug": "^2.2.0"
+  },
+  "devDependencies": {
+    "level-bytewise": "^1.0.0",
+    "chai": "^3.5.0",
+    "cumulative-moving-average": "^1.0.0",
+    "memwatch-next": "^0.3.0",
+    "mocha": "~2.5.3",
+    "rimraf": "^2.5.3"
+  },
+  "keywords": [
+    "level",
+    "leveldb",
+    "queue"
+  ],
+  "engines": {
+    "node": ">=0.10.0",
+    "npm": ">=2.0.0"
+  }
+}
