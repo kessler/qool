@@ -10,4 +10,7 @@
 
 ## license
 
+### TODO
+- unify batches - no need for distinction between enqueue and dequeue - it's all dels and puts 
+
 [MIT](http://opensource.org/licenses/MIT) © yaniv kessler
