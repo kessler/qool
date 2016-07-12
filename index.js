@@ -1,8 +1,8 @@
 'use strict'
 
-const debug = require('debug')('levelq')
+const debug = require('debug')('qool')
 
-class Levelq {
+class Qool {
 	constructor(db) {
 		this._db = db
 		this._data = db.sublevel('data')
@@ -26,12 +26,17 @@ class Levelq {
 		 // check if previous entry in the log is a batch
 		 // other instantiate one
 		let batch = this._log[this._log.length - 1]
-		if (! (batch instanceof EnqueueBatch)) {
-			batch = new EnqueueBatch()
+		if (!batch) {
+			batch = new OpsBatch()
 			this._log.push(batch)
 		}
 
-		batch.push(key, data, cb)
+		if (batch.ops.length > 100) {
+			batch = new OpsBatch()
+			this._log.push(batch)	
+		}
+
+		batch.push(new EnqueueOp(key, data, cb))
 
 		// this is much slower than batching
 		// this._log.push(new EnqueueOp(key, data, cb))
@@ -47,9 +52,14 @@ class Levelq {
 		//  check if previous entry in the log is a batch
 		//  other instantiate one
 		let batch = this._log[this._log.length - 1]
-		if (! (batch instanceof DequeueBatch)) {
-			batch = new DequeueBatch()
+		if (!batch) {
+			batch = new OpsBatch()
 			this._log.push(batch)
+		}
+
+		if (batch.ops.length > 10) {
+			batch = new OpsBatch()
+			this._log.push(batch)	
 		}
 
 		batch.push(new DequeueOp(timeout, cb))
@@ -82,170 +92,203 @@ class Levelq {
 	}
 }
 
-class EnqueueOp {
-	constructor(key, value, cb) {
-		this.key = key
-		this.value = value
-		this.cb = cb
-	}
-
-	execute(data, meta, internalCb) {
-		data.put(this.key, this.value, (err) => {
-			internalCb()
-			this.cb(err)
-		})
-	}
-}
-
-class EnqueueBatch {
+/**
+ *
+ */
+class OpsBatch {
 	constructor() {
-		this.callbacks = []
 		this.batch = []
-		this.current = 0
+		this.ops = []
+		this.currentIndex = 0
+		this.bookmark = undefined
+		this.start = undefined
 	}
 
 	execute(data, meta, cb) {
-		data.batch(this.batch, (err) => {
-			this._done(err, cb)
-		})
-	}
+		debug('execute() %d ops from %d', this.ops.length, this.currentIndex)
 
-	push(key, value, cb) {
-		this.batch.push({ key, value, type: 'put' })
-		this.callbacks.push(cb)
-	}
+		let executeOp = (op) => {
+			return op.execute(this, data, (err, bookmark) => {
+				if (err) {
+					// break the batch
+					return this.done(err, data, cb)
+				}
 
-	_done(err, cb) {
-		for (let i = 0; i < this.callbacks.length; i++) {
-			let callback = this.callbacks[i]
-			if (callback) {
-				callback(err)
-			}
+				// update the bookmark
+				if (bookmark) { 
+					this.bookmark = bookmark
+				}
+				
+				if (op.batchOp) {
+					this.batch.push(op.batchOp)
+				}
+
+				this.currentIndex++
+				this.execute(data, meta, cb)
+			})
 		}
 
-		cb(err)
+		for (;this.currentIndex < this.ops.length; this.currentIndex++) {
+			let op = this.ops[this.currentIndex]
+			
+			let proceed = executeOp(op)
+
+			if (!proceed) {
+				return
+			}
+			
+			this.batch.push(op.batchOp)
+		}
+
+		this.done(null, data, cb)
+	}
+
+	push(op) {
+		debug('OpsBatch: push()')
+		this.ops.push(op)
+	}
+
+	done(err, data, cb) {
+		debug('OpsBatch: done()')
+		if (err) {
+			for (let i =  0; i < this.currentIndex; i++) {
+				this.ops[i].done(err)
+			}
+
+			cb(err)
+			return
+		}
+
+		debug('OpsBatch: done() 0 => %d', this.currentIndex)
+		
+		// we;re done so call all the cbs after batch
+		data.batch(this.batch, (err) => {
+
+			for (let i =  0; i < this.currentIndex; i++) {
+				this.ops[i].done(err)
+			}
+
+			cb(err)
+		})
 	}
 }
 
 class DequeueOp {
-	constructor(timeout, cb) {
-		this.cb = cb
-		this.timeout = timeout
-		this.bookmark = undefined
-		this.result = undefined
+	constructor(timeout, userCb) {
+		this.batchOp = undefined
+		this.timeout = timeout // not operational yet
+		this.userCb = userCb
+		this.value = undefined
 		this.error = undefined
+		this.bookmark = undefined
 	}
 
-	execute(data, meta, internalCb) {
+	execute(batch, data, cb) {
+		debug('DequeueOp: execute()')
+		let lastPut = findUnclaimedPut(batch.ops, batch.currentIndex)
+		if (lastPut) {
+			lastPut.claim()
+			this.batchOp = new DelOp(lastPut.batchOp.key)
+			this.value = lastPut.batchOp.value
+			return true
+		}
+
+		this._getHead(batch.bookmark, data, cb)
+	}
+
+	done(err) {
+		if (this.userCb) {
+			debug('DequeueOp: done()')
+			this.userCb(err || this.error, this.value)
+		}
+	}
+
+	_getHead(bookmark, data, cb) {
+		debug('_getHead(%s)', bookmark)
 		let entry, error
 		let opts = {
 			limit: 1,
-			gt: this.bookmark
+			gt: bookmark
 		}
 
 		data.createReadStream(opts)
 			.once('data', (_entry) => {
-				this.result = _entry
+				this.value = _entry.value
+				this.bookmark = _entry.key
 			})
 			.once('error', (err) => {
 				err = error
 			})
 			.once('close', () => {
 				if (error) {
-					this.error = error
-					return internalCb(error)
+					this[ERROR] = error
+					return cb(error)
 				}
 
-				internalCb()
+				if (this.bookmark) {
+					this.batchOp = new DelOp(this.bookmark)
+				}
+
+				cb(null, this.bookmark)
 			})
 	}
 }
 
-/**
- * 	perform multiple dequeu ops, deleting entries
- *	once the batch is complete 
- *	this speeds up things significantly
- *
- */
-class DequeueBatch {
-	constructor() {
-		this.ops = []
-		this.deletion = []
-		this.current = 0
+class EnqueueOp {
+	constructor(key, value, userCb) {
+		this.batchOp = new PutOp(key, value)
+		this.userCb = userCb
+		this.claimed = false
+		this.error = undefined
 	}
 
-	execute(data, meta, cb) {
-		debug('DequeueBatch:execute()')
+	execute(batch, data, cb) {
+		debug('EnqueueOp: execute()')
+		return true
+	}
 
-		/**
-		 *	recursively execute single dequeue ops
-		 *	passing the last dequeue key to the next
-		 *	to be used as a bookmark to start the read stream
-		 *
-		 *	all the individual dequeue user callbacks
-		 *	are executed at the end of the batch
-		 *	to prevent the user from reading the database
-		 *	in the middle of a batch
-		 */
-		let execute = (bookmark) => {
-			if (bookmark) this.deletion.push({ key: bookmark, type: 'del' })
+	isClaimed() {
+		debug('EnqueueOp: isClaimed()')
+		return this.claimed
+	}
 
-			// when the batch is complete
-			if (this.current === this.ops.length) {
-				return this._done(null, data, cb)
-			}
+	claim() {
+		debug('EnqueueOp: claim()')
+		this.claimed = true
+	}
 
-			let op = this.ops[this.current++]
-			op.bookmark = bookmark
-			op.execute(data, meta, (err) => {
-				if (err) {
-					return this._done(err, data, cb)
-				}
-				execute(op.result.key)
-			})
+	done(err) {
+		if (this.userCb) {
+			debug('EnqueueOp: done()')
+			this.userCb(err || this.error)
 		}
-
-		execute()
-	}
-
-	push(op) {
-		this.ops.push(op)
-	}
-
-	// TODO make this code less ugly
-	_done(err, data, cb) {
-
-		debug('deleting %d keys', this.deletion.length)
-		// first delete all successful dequeue ops
-		data.batch(this.deletion, () => {
-			let errored = false
-
-			// iterate over all dequeue ops
-			// if an operation errored, all following operations
-			// are considered failed
-			for (let i  = 0; i < this.ops.length; i++) {
-				let op = this.ops[i]
-				
-				if (op.error) {
-					errored = true
-					if (op.cb) {
-						op.cb(err)	
-					}
-					continue
-				}
-
-				if (!op.cb) continue
-
-				if (errored) {
-					op.cb(new Error('previous operation failed'))
-				} else {
-					op.cb(null, op.result.value)
-				}
-			}
-
-			cb()
-		})
 	}
 }
 
-module.exports = Levelq
+class DelOp {
+	constructor(key) {
+		this.type = 'del'
+		this.key = key
+	}
+}
+
+class PutOp {
+	constructor(key, value) {
+		this.type = 'put'
+		this.key = key
+		this.value = value
+	}
+}
+
+function findUnclaimedPut(ops, pos) {
+	for (let i = 0; i < pos; i++) {
+		let op = ops[i]
+		if (!(op instanceof EnqueueOp)) continue;
+
+		if (!op.isClaimed()) {
+			return op
+		}
+	}
+}
+
+module.exports = Qool

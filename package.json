@@ -1,5 +1,5 @@
 {
-  "name": "levelq",
+  "name": "qool",
   "version": "0.0.1",
   "description": "leveldb based queue service",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "queue"
   ],
   "engines": {
-    "node": ">=0.10.0",
+    "node": ">=5.0.0",
     "npm": ">=2.0.0"
   }
 }

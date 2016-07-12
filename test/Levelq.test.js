@@ -11,7 +11,46 @@ const cma = require('cumulative-moving-average')
 describe('Levelq', () => {
 	let db, data, size, queue
 
-	describe('enqueue', () => {
+	describe.only('zzz', () => {
+
+		it('dequeues in the reverse order items were enqueued', (done) => {
+			queue.enqueue(1)
+			queue.enqueue(2)
+			queue.enqueue(3)
+			queue.dequeue((err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(3)
+			})
+
+			queue.dequeue((err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(2)
+			})
+
+			queue.dequeue((err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(1)
+			})
+
+			queue.enqueue(4)
+			queue.dequeue((err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(4)
+				done()
+			})
+		})
+
+		it('dequeue on an empty queu', (done) => {
+			queue.dequeue()
+			queue.enqueue(1)
+			queue.dequeue((err, value) => {
+				if (err) return done(err)
+				done()
+			})
+		})
+	})
+
+	describe('bench', () => {
 		it('enqueue', function (done) {
 			this.timeout(100000)
 
@@ -20,6 +59,8 @@ describe('Levelq', () => {
 			for (let i = 0; i < size; i++) {
 				enqueue(i)
 			}
+
+			console.log(1)
 
 			function enqueue(i) {
 				let start = Date.now()
@@ -49,72 +90,44 @@ describe('Levelq', () => {
 
 			check()
 		})
-	})
 
-	describe('dequeue', () => {
 		it('dequeue', function(done) {
 			this.timeout(200000)
-		
-			let count = 0
-			for (let i = 0; i < size / 2; i++) {
-				queue.dequeue((err, item) => {
-					if (err) return done(err)
-					count++
-				})
-			}
-
-			function check() {
-				if (count === size / 2) {
-					let afterCount = 0
-					db.sublevel('data').createReadStream()
-						.on('data', () => {
-							afterCount++
-						})
-						.on('end', () => {
-							expect(afterCount).to.equal(count)
-							done()
-						})
-				} else {
-					setImmediate(check)
-				}
-			}
-
-			check()			
-		})
-
-		beforeEach(function(done) {
-			this.timeout(20000)
+			this.timeout(200000)
 
 			for (let i = 0; i < size; i++) {
 				data.put([Date.now(), i], i + 'xyz')
 			}
 			console.log(1)
-			setTimeout(() => {
-				done()
-			}, 2000)
-		})
-	})
+			setTimeout(test, 2000)
 
-	describe.only('order', () => {
-		it('dequeues in the reverse order items were enqueued', (done) => {
-			queue.enqueue(1)
-			queue.enqueue(2)
-			queue.enqueue(3)
-			queue.dequeue((err, value) => {
-				if (err) return done(err)
-				expect(value).to.equal(1)
-			})
+			function test() {
+				let count = 0
+				for (let i = 0; i < size / 2; i++) {
+					queue.dequeue((err, item) => {
+						if (err) return done(err)
+						count++
+					})
+				}
 
-			queue.dequeue((err, value) => {
-				if (err) return done(err)
-				expect(value).to.equal(2)
-			})
+				function check() {
+					if (count === size / 2) {
+						let afterCount = 0
+						db.sublevel('data').createReadStream()
+							.on('data', () => {
+								afterCount++
+							})
+							.on('end', () => {
+								expect(afterCount).to.equal(count)
+								done()
+							})
+					} else {
+						setImmediate(check)
+					}
+				}
 
-			queue.dequeue((err, value) => {
-				if (err) return done(err)
-				expect(value).to.equal(3)
-				done()
-			})
+				check()
+			}
 		})
 	})
 
@@ -129,7 +142,7 @@ describe('Levelq', () => {
 		rimraf.sync(dbPath)
 		db = level(dbPath)
 		data = db.sublevel('data')
-		size = 1000000
+		size = 100000
 		queue = new Levelq(db)
 	})
 })
