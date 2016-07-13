@@ -1,6 +1,6 @@
-# levelq (WIP)
+# qool-core (WIP)
 
-**Core queue backed by leveldb**
+**The core of Qool, a leveldb backed Queue**
 
 [![npm status](http://img.shields.io/npm/v/levelq.svg?style=flat-square)](https://www.npmjs.org/package/levelq) 
 
@@ -9,5 +9,9 @@
 - batching for level db mutating operations (del, put)
 
 ## license
+
+### TODO
+- enhance tests
+- code is a little messy
 
 [MIT](http://opensource.org/licenses/MIT) © yaniv kessler
