@@ -7,7 +7,7 @@ class Qool {
 		this._db = db
 		this._data = db.sublevel('data')
 		this._meta = db.sublevel('meta')
-
+		this._batchSize = 1000
 		this._counter = 0
 
 		setInterval(() => {
@@ -22,24 +22,7 @@ class Qool {
 	enqueue(data, cb) {
 		debug('enqueue()', data)
 		let key = [Date.now(), this._counter++]
-
-		 // check if previous entry in the log is a batch
-		 // other instantiate one
-		let batch = this._log[this._log.length - 1]
-		if (!batch) {
-			batch = new OpsBatch()
-			this._log.push(batch)
-		}
-
-		if (batch.ops.length > 100) {
-			batch = new OpsBatch()
-			this._log.push(batch)	
-		}
-
-		batch.push(new EnqueueOp(key, data, cb))
-
-		// this is much slower than batching
-		// this._log.push(new EnqueueOp(key, data, cb))
+		this._pushToBatch(new EnqueueOp(key, data, cb))
 	}
 
 	dequeue(timeout, cb) {
@@ -49,20 +32,17 @@ class Qool {
 			timeout = -1
 		}
 
-		//  check if previous entry in the log is a batch
-		//  other instantiate one
+		this._pushToBatch(new DequeueOp(timeout, cb))
+	}
+
+	_pushToBatch(op) {
 		let batch = this._log[this._log.length - 1]
-		if (!batch) {
+		if (!batch || (batch.ops.length > this._batchSize)) {
 			batch = new OpsBatch()
 			this._log.push(batch)
 		}
 
-		if (batch.ops.length > 10) {
-			batch = new OpsBatch()
-			this._log.push(batch)	
-		}
-
-		batch.push(new DequeueOp(timeout, cb))
+		batch.push(op)
 	}
 
 	_loop() {
@@ -102,6 +82,8 @@ class OpsBatch {
 		this.currentIndex = 0
 		this.bookmark = undefined
 		this.start = undefined
+		this.enqueueIndex = []
+		this.currentEnqueueIndex = 0
 	}
 
 	execute(data, meta, cb) {
@@ -146,6 +128,9 @@ class OpsBatch {
 	push(op) {
 		debug('OpsBatch: push()')
 		this.ops.push(op)
+		if (op instanceof EnqueueOp) {
+			this.enqueueIndex.push(op)
+		}
 	}
 
 	done(err, data, cb) {
@@ -171,6 +156,15 @@ class OpsBatch {
 			cb(err)
 		})
 	}
+
+	getLastPut() {
+		let lastPut = this.enqueueIndex[this.currentEnqueueIndex]
+		if (lastPut) {
+			this.currentEnqueueIndex++
+		}
+
+		return lastPut
+	}
 }
 
 class DequeueOp {
@@ -185,9 +179,9 @@ class DequeueOp {
 
 	execute(batch, data, cb) {
 		debug('DequeueOp: execute()')
-		let lastPut = findUnclaimedPut(batch.ops, batch.currentIndex)
+		let lastPut = batch.getLastPut()
+		
 		if (lastPut) {
-			lastPut.claim()
 			this.batchOp = new DelOp(lastPut.batchOp.key)
 			this.value = lastPut.batchOp.value
 			return true
@@ -277,17 +271,6 @@ class PutOp {
 		this.type = 'put'
 		this.key = key
 		this.value = value
-	}
-}
-
-function findUnclaimedPut(ops, pos) {
-	for (let i = 0; i < pos; i++) {
-		let op = ops[i]
-		if (!(op instanceof EnqueueOp)) continue;
-
-		if (!op.isClaimed()) {
-			return op
-		}
 	}
 }
 

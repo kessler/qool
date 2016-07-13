@@ -1,6 +1,7 @@
 'use strict'
-
-const Qool = require('../index.js')
+const implementation = '../index.js'
+console.log(implementation)
+const Qool = require(implementation)
 const expect = require('chai').expect
 const level = require('level-bytewise')
 const rimraf = require('rimraf')
@@ -11,7 +12,7 @@ const cma = require('cumulative-moving-average')
 describe('Qool', () => {
 	let db, data, size, queue
 
-	describe('zzz', () => {
+	describe('tests', () => {
 
 		it('dequeues in the reverse order items were enqueued', (done) => {
 			queue.enqueue(1)
@@ -91,7 +92,7 @@ describe('Qool', () => {
 			check()
 		})
 
-		it.only('dequeue', function(done) {
+		it('dequeue', function(done) {
 			this.timeout(2000000)
 			let avg = cma()
 			let count = 0
@@ -101,7 +102,8 @@ describe('Qool', () => {
 			}
 
 			console.log(1)
-			setTimeout(test, 2000)
+
+			setTimeout(test, 5000)
 
 			function dequeue() {
 				let start = Date.now()
@@ -128,10 +130,65 @@ describe('Qool', () => {
 								afterCount++
 							})
 							.on('end', () => {
-								expect(afterCount).to.equal(count)
-								console.log('test time: %d', (Date.now() - testStart) / 1000)
+								console.log('test time: %d', Date.now() - testStart)
+								expect(afterCount).to.equal(0)	
 								done()
 							})
+					} else {
+						setImmediate(check)
+					}
+				}
+
+				check()
+			}
+		})
+
+		it.only('mixed', function (done) {
+			this.timeout(100000)
+
+			let count = 0
+			let dequeueAvg = cma()
+			let enqueueAvg = cma()
+			let testStart = Date.now()
+
+			for (let i = 0; i < size; i++) {
+				if (i % 4 === 0) {
+					enqueue(i)
+				} else {
+					dequeue(i)
+				}
+			}
+
+			console.log(1)
+
+			setTimeout(test, 5000)
+
+			function enqueue(i) {
+				let start = Date.now()
+				queue.enqueue(i, (err) => {
+					enqueueAvg.push(Date.now() - start)
+					if (err) return done(err)
+					count++
+				})
+			}
+
+			function dequeue() {
+				let start = Date.now()
+				queue.dequeue((err, item) => {
+					dequeueAvg.push(Date.now() - start)
+					if (err) return done(err)
+					count++
+				})
+			}
+
+			function test() {
+				function check() {
+					if (count === size) {
+						console.log('batch size %d', queue._batchSize)
+						console.log('dequeue: %d', dequeueAvg.value / 1000, dequeueAvg.length)
+						console.log('enqueue: %d', enqueueAvg.value / 1000, enqueueAvg.length)
+						console.log('test end %d', Date.now() - testStart)
+						done()
 					} else {
 						setImmediate(check)
 					}
