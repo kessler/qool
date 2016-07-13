@@ -7,7 +7,7 @@ class Levelq {
 		this._db = db
 		this._data = db.sublevel('data')
 		this._meta = db.sublevel('meta')
-
+		this._batchSize = 10000
 		this._counter = 0
 
 		setInterval(() => {
@@ -23,15 +23,7 @@ class Levelq {
 		debug('enqueue()', data)
 		let key = [Date.now(), this._counter++]
 
-		 // check if previous entry in the log is a batch
-		 // other instantiate one
-		let batch = this._log[this._log.length - 1]
-		if (! (batch instanceof EnqueueBatch)) {
-			batch = new EnqueueBatch()
-			this._log.push(batch)
-		}
-
-		batch.push(key, data, cb)
+		this._pushToEnqueueBatch(key, data, cb)
 
 		// this is much slower than batching
 		// this._log.push(new EnqueueOp(key, data, cb))
@@ -44,15 +36,37 @@ class Levelq {
 			timeout = -1
 		}
 
-		//  check if previous entry in the log is a batch
-		//  other instantiate one
+		this._pushToDequeueBatch(new DequeueOp(timeout, cb))
+	}
+
+	_pushToDequeueBatch(op) {
 		let batch = this._log[this._log.length - 1]
-		if (! (batch instanceof DequeueBatch)) {
+		if (!(batch instanceof DequeueBatch)) {
 			batch = new DequeueBatch()
 			this._log.push(batch)
 		}
 
-		batch.push(new DequeueOp(timeout, cb))
+		if (batch.length > this._batchSize) {
+			batch = new DequeueBatch()
+			this._log.push(batch)	
+		}
+
+		batch.push(op)
+	}
+
+	_pushToEnqueueBatch(key, data, cb) {
+		let batch = this._log[this._log.length - 1]
+		if (!(batch instanceof EnqueueBatch)) {
+			batch = new EnqueueBatch()
+			this._log.push(batch)
+		}
+
+		if (batch.length > this._batchSize) {
+			batch = new EnqueueBatch()
+			this._log.push(batch)	
+		}
+
+		batch.push(key, data, cb)	
 	}
 
 	_loop() {
@@ -64,7 +78,7 @@ class Levelq {
 
 		let log = this._log.reverse()
 		this._initLog()
-		
+
 		let exec = () => {
 
 			if (log.length === 0) {
@@ -102,6 +116,7 @@ class EnqueueBatch {
 		this.callbacks = []
 		this.batch = []
 		this.current = 0
+		this.length = 0
 	}
 
 	execute(data, meta, cb) {
@@ -111,6 +126,7 @@ class EnqueueBatch {
 	}
 
 	push(key, value, cb) {
+		this.length++
 		this.batch.push({ key, value, type: 'put' })
 		this.callbacks.push(cb)
 	}
@@ -172,6 +188,7 @@ class DequeueBatch {
 		this.ops = []
 		this.deletion = []
 		this.current = 0
+		this.length = 0
 	}
 
 	execute(data, meta, cb) {
@@ -201,7 +218,11 @@ class DequeueBatch {
 				if (err) {
 					return this._done(err, data, cb)
 				}
-				execute(op.result.key)
+				let key
+				if (op.result) {
+					key = op.result.key
+				}
+				execute(key)
 			})
 		}
 
@@ -209,6 +230,7 @@ class DequeueBatch {
 	}
 
 	push(op) {
+		this.length++
 		this.ops.push(op)
 	}
 
@@ -216,20 +238,20 @@ class DequeueBatch {
 	_done(err, data, cb) {
 
 		debug('deleting %d keys', this.deletion.length)
-		// first delete all successful dequeue ops
+			// first delete all successful dequeue ops
 		data.batch(this.deletion, () => {
 			let errored = false
 
 			// iterate over all dequeue ops
 			// if an operation errored, all following operations
 			// are considered failed
-			for (let i  = 0; i < this.ops.length; i++) {
+			for (let i = 0; i < this.ops.length; i++) {
 				let op = this.ops[i]
-				
+
 				if (op.error) {
 					errored = true
 					if (op.cb) {
-						op.cb(err)	
+						op.cb(err)
 					}
 					continue
 				}
@@ -239,7 +261,7 @@ class DequeueBatch {
 				if (errored) {
 					op.cb(new Error('previous operation failed'))
 				} else {
-					op.cb(null, op.result.value)
+					op.cb(null, op.result ? op.result.value : undefined)
 				}
 			}
 
