@@ -49,6 +49,10 @@ describe('Qool', () => {
 				done()
 			})
 		})
+
+		it('forwards any errors to the caller, if a callback is provided', () => {
+
+		})
 	})
 
 	describe.skip('bench', () => {

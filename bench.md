@@ -43,6 +43,30 @@ The deq in index 2 will dequeue the value ```a```, the deq in index 3 will deque
 | 50,000 | 100,000 | 10,409ms | 7,444ms |
 | 100,000 | 100,000 | 9,034ms | 8,955ms |
 
+## Other optimizations
+
+### initializing UnifiedBatch arrays to a predefined length
+
+This yielded very small but noticeable improvement
+
+#### enqueue
+
+| batch size | count | test time | avg to callback|
+|-------------|---------|------------|------------------|
+| 1,000 | 100,000 | 4,555ms | 1,620ms |
+
+#### dequeue
+
+| batch size | count | test time | avg to callback|
+|-------------|---------|------------|------------------|
+| 1,000 | 100,000 | 25,081ms | 12,428ms |
+
+#### mixed
+
+| batch size | count | test time | avg to callback|
+|-------------|---------|------------|------------------|
+| 1,000 | 100,000 | 11,760ms | 6,111ms |
+
 # Dequeue/Enqueue Batch
 In this scenario each type of operation is included in it's own batch. The batches are processed serially. e.g 3 enqueus and 2 dequeues will created two batchs.
 
@@ -71,3 +95,4 @@ In this scenario each type of operation is included in it's own batch. The batch
 
 ## mixed
 Performed really BADLY
+

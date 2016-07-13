@@ -18,7 +18,7 @@ let count = 0
 
 for (let i = 0; i < SIZE; i++) {
 	if (i % selector === 0) {
-		//enqueue(i)
+		enqueue(i)
 	} else {
 		dequeue(i)
 	}

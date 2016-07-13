@@ -38,7 +38,7 @@ class Qool {
 	_pushToBatch(op) {
 		let batch = this._log[this._log.length - 1]
 		if (!batch || (batch.ops.length > this._batchSize)) {
-			batch = new UnifiedBatch()
+			batch = new UnifiedBatch(this._batchSize)
 			this._log.push(batch)
 		}
 
@@ -76,14 +76,22 @@ class Qool {
  *
  */
 class UnifiedBatch {
-	constructor() {
-		this.batch = []
-		this.ops = []
+	constructor(maxBatchSize) {
+		// since we're initializing these arrays we need to keep track of the actual
+		// length to avoid processing undefined members
+		this.ops = new Array(maxBatchSize)
+		this.length = 0
 		this.currentIndex = 0
+
+		this.enqueueIndex = new Array(maxBatchSize)
+		this.enqueueIndexLength = 0
+		this.currentEnqueueIndex = 0
+
+		this.batch = new Array(maxBatchSize)
+		this.batchLength = 0
+		
 		this.bookmark = undefined
 		this.start = undefined
-		this.enqueueIndex = []
-		this.currentEnqueueIndex = 0
 	}
 
 	execute(data, meta, cb) {
@@ -102,7 +110,7 @@ class UnifiedBatch {
 				}
 				
 				if (op.batchOp) {
-					this.batch.push(op.batchOp)
+					this.batch[this.batchLength++] = op.batchOp
 				}
 
 				this.currentIndex++
@@ -110,7 +118,7 @@ class UnifiedBatch {
 			})
 		}
 
-		for (;this.currentIndex < this.ops.length; this.currentIndex++) {
+		for (;this.currentIndex < this.length; this.currentIndex++) {
 			let op = this.ops[this.currentIndex]
 			
 			let proceed = executeOp(op)
@@ -119,7 +127,7 @@ class UnifiedBatch {
 				return
 			}
 			
-			this.batch.push(op.batchOp)
+			this.batch[this.batchLength++] = op.batchOp
 		}
 
 		this.done(null, data, cb)
@@ -127,9 +135,9 @@ class UnifiedBatch {
 
 	push(op) {
 		debug('UnifiedBatch: push()')
-		this.ops.push(op)
+		this.ops[this.length++] = op
 		if (op instanceof EnqueueOp) {
-			this.enqueueIndex.push(op)
+			this.enqueueIndex[this.enqueueIndexLength++] = op
 		}
 	}
 
@@ -147,7 +155,7 @@ class UnifiedBatch {
 		debug('UnifiedBatch: done() 0 => %d', this.currentIndex)
 		
 		// we;re done so call all the cbs after batch
-		data.batch(this.batch, (err) => {
+		data.batch(this.batch.slice(0, this.batchLength), (err) => {
 
 			for (let i =  0; i < this.currentIndex; i++) {
 				this.ops[i].done(err)
