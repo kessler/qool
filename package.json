@@ -1,6 +1,6 @@
 {
   "name": "qool-core",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "the core of qool, a leveldb backed queue",
   "license": "MIT",
   "author": {
@@ -30,11 +30,11 @@
     "node": ">=5.0.0",
     "npm": ">=2.0.0"
   },
-   "repository": {
+  "repository": {
     "type": "git",
     "url": "https://github.com/kessler/qool-core"
   },
-   "bugs": {
+  "bugs": {
     "url": "https://github.com/kessler/qool-core/issues"
   }
 }
