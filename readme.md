@@ -1,6 +1,6 @@
-# qool-core (WIP)
+# qool (WIP)
 
-**The core of Qool, a leveldb backed Queue**
+**a leveldb backed Queue**
 
 [![npm status](http://img.shields.io/npm/v/levelq.svg?style=flat-square)](https://www.npmjs.org/package/levelq) 
 
