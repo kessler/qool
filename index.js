@@ -240,23 +240,12 @@ class EnqueueOp {
 	constructor(key, value, userCb) {
 		this.batchOp = new PutOp(key, value)
 		this.userCb = userCb
-		this.claimed = false
 		this.error = undefined
 	}
 
 	execute(batch, data, cb) {
 		debug('EnqueueOp: execute()')
 		return true
-	}
-
-	isClaimed() {
-		debug('EnqueueOp: isClaimed()')
-		return this.claimed
-	}
-
-	claim() {
-		debug('EnqueueOp: claim()')
-		this.claimed = true
 	}
 
 	done(err) {
