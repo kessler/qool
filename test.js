@@ -14,7 +14,7 @@ describe('Qool', () => {
 
 	describe('tests', () => {
 
-		it('dequeues in the reverse order items were enqueued', (done) => {
+		it.only('is FIFO', (done) => {
 			queue.enqueue(1)
 			queue.enqueue(2)
 			queue.enqueue(3)

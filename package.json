@@ -14,12 +14,14 @@
     "debug": "^2.2.0"
   },
   "devDependencies": {
-    "level-bytewise": "^1.0.0",
     "chai": "^3.5.0",
     "cumulative-moving-average": "^1.0.0",
-    "memwatch-next": "^0.3.0",
+    "level-bytewise": "^1.0.0",
+    "lodash": "^4.13.1",
     "mocha": "~2.5.3",
-    "rimraf": "^2.5.3"
+    "readable-stream": "^2.1.4",
+    "rimraf": "^2.5.3",
+    "stream-array": "^1.1.2"
   },
   "keywords": [
     "level",

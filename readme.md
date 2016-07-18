@@ -34,5 +34,6 @@ Some initial benchmarks and ramblings on internal design are [here](./bench.md)
 - implement length property
 - should we have a version of dequeue that "waits" if the queue is empty
 - implement timeout on dequeue (item shows up on the queue again)
+- when dequeue reads past the memory batch into the database - it might be beneficial to createReadStream({ limit > 1 }) if more dequeues following in the batch 
 
 [MIT](http://opensource.org/licenses/MIT) © yaniv kessler
