@@ -15,6 +15,7 @@ describe('SmartBatch', () => {
 
 	it('executes operations in fifo order', (done) => {
 		let ops = []
+		
 		batch.push(new DequeueOp((err, value) => {
 			if (err) return done(err)
 			ops.push(value)
@@ -99,7 +100,7 @@ describe('SmartBatch', () => {
 
 	beforeEach(() => {
 		db = new MockDb()
-		batch = new SmartBatch(db, 10)
+		batch = new SmartBatch(db)
 	})
 })
 

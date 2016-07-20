@@ -24,7 +24,7 @@ queue.dequeue()
 queue.dequeue((err, value) => {})
 ```
 
-Some initial benchmarks and ramblings on internal design are [here](./bench.md)
+Some ramblings on internal design are [here](./notes.md)
 
 ## license
 

@@ -69,7 +69,7 @@ class Qool {
 
 	_newBatch() {
 		debug('creating new batch')
-		this._batch = new SmartBatch(this._data, this._batchSize)
+		this._batch = new SmartBatch(this._data)
 	}
 }
 
