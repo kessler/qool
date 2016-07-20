@@ -1,6 +1,6 @@
 {
   "name": "qool",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "qool is a leveldb backed queue",
   "license": "MIT",
   "author": {
