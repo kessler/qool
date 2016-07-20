@@ -1,3 +1,30 @@
+# SmartBatch
+
+## enqueue
+
+| batch size | count | test time | avg to callback|
+|-------------|---------|------------|------------------|
+| 5 | 100,000 | 5,575ms | 2,130ms |
+| 10 | 100,000 | 5,302ms | 1,959ms |
+| 100 | 100,000 | 4,782ms | 1,704ms |
+| 1,000 | 100,000 | 4,851ms | 1,781ms |
+| 10,000 | 100,000 | 4,900ms | 1,890ms |
+| 50,000 | 100,000 | 5,017ms | 2,621ms |
+| 100,000 | 100,000 | 5,046ms | 3,567ms |
+
+## dequeue
+
+| batch size | count | test time | avg to callback|
+|-------------|---------|------------|------------------|
+| 5 | 100,000 | n/a | n/a |
+| 10 | 100,000 | n/a | n/a |
+| 100 | 100,000 | 46,028ms | 19,271ms |
+| 1,000 | 100,000 | 27,115ms | 13,491ms |
+| 10,000 | 100,000 | 23,762ms | 13,066ms |
+| 50,000 | 100,000 | 23,315ms | 17,669ms |
+| 100,000 | 100,000 | 22,026ms | 21,953ms |
+
+
 # UnifiedBatch
 A more complex implementation but seems to be performing better when a mix of operations is performed on the queue (rather than one type)
 
