@@ -8,9 +8,6 @@
 - strict FIFO ordering of enqueue and dequeue operations
 - batching for level db mutating operations (del, put)
 
-## Design
-This queue batches all puts and dels operations. The batches are made up of all the operations done in a single tick
-
 ## Example
 
 ```javascript
