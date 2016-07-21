@@ -1,6 +1,6 @@
 'use strict'
 
-const Qool = require('../index.js')
+const Qool = require('../lib/Qool.js')
 const expect = require('chai').expect
 const level = require('level-bytewise')
 const rimraf = require('rimraf')
@@ -48,13 +48,25 @@ describe('Qool', () => {
 			})
 		})
 
+		it.only('peeking at the top of the queue', (done) => {
+			queue.enqueue(1)
+			queue.enqueue(2)
+			setImmediate(() => {
+				queue.peek((err, result) => {
+					if (err) return done(err)
+					expect(result).to.eql([1])
+					done()
+				})	
+			})			
+		})
+
 		it('forwards any errors to the caller, if a callback is provided', () => {
 
 		})
 	})
 
 	describe('bench', () => {
-		it.only('enqueue', function (done) {
+		it('enqueue', function (done) {
 			this.timeout(100000)
 
 			let count = 0
@@ -214,7 +226,7 @@ describe('Qool', () => {
 		rimraf.sync(dbPath)
 		db = level(dbPath)
 		data = db.sublevel('data')
-		size = 100000
+		size = 1000
 		queue = new Qool(db)
 	})
 })

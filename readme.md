@@ -8,6 +8,9 @@
 - strict FIFO ordering of enqueue and dequeue operations
 - batching for level db mutating operations (del, put)
 
+## Design
+This queue batches all puts and dels operations. The batches are made up of all the operations done in a single tick
+
 ## Example
 
 ```javascript
@@ -15,7 +18,7 @@ const Qool = require('qool')
 const level = require('level-bytewise')
 
 const db = level('db')
-const queue = new Qool(db)
+const queue = Qool.create(db)
 
 queue.enqueue('a')
 queue.enqueue('b', (err) => {})
