@@ -60,7 +60,7 @@ describe('Qool', () => {
 			}, 1000)
 		})
 
-		it('forwards any errors to the caller, if a callback is provided', () => {
+		it.skip('forwards any errors to the caller, if a callback is provided', () => {
 
 		})
 	})
