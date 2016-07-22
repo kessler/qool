@@ -10,7 +10,7 @@ const cma = require('cumulative-moving-average')
 describe('Qool', () => {
 	let db, data, size, queue
 
-	describe('tests', () => {
+	describe.only('tests', () => {
 
 		it('dequeues in the reverse order items were enqueued', (done) => {
 			queue.enqueue(1)
@@ -48,16 +48,16 @@ describe('Qool', () => {
 			})
 		})
 
-		it.only('peeking at the top of the queue', (done) => {
+		it('peeking at the top of the queue', (done) => {
 			queue.enqueue(1)
 			queue.enqueue(2)
-			setImmediate(() => {
+			setTimeout(() => {
 				queue.peek((err, result) => {
 					if (err) return done(err)
 					expect(result).to.eql([1])
 					done()
 				})	
-			})			
+			}, 1000)
 		})
 
 		it('forwards any errors to the caller, if a callback is provided', () => {
