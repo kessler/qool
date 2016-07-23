@@ -5,6 +5,7 @@
 [![npm status](http://img.shields.io/npm/v/qool.svg?style=flat-square)](https://www.npmjs.org/package/qool) 
 
 ## Features
+- durable queue
 - strict FIFO ordering of enqueue and dequeue operations
 - batching for level db mutating operations (del, put)
 
