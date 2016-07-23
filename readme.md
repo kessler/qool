@@ -33,5 +33,7 @@ Some ramblings on internal design are [here](./notes.md)
 - enhance tests
 - implement length property
 - should we have a version of dequeue that "waits" if the queue is empty
+- expiry for enqueued items
+- dequeue ttl - items reappear in the queue if consumer did not confirm they were processed
 
 [MIT](http://opensource.org/licenses/MIT) © yaniv kessler
