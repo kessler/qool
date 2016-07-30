@@ -1,6 +1,6 @@
 'use strict'
 
-const Qool = require('./index')
+const Qool = require('./lib/Qool.js')
 const level = require('level-bytewise')
 
 const db = level('db')
