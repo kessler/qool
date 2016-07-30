@@ -1,13 +1,12 @@
-# qool (WIP)
+# qool
 
 **a leveldb backed [Queue](https://en.wikipedia.org/wiki/Queue_(abstract_data_type))**
 
 [![npm status](http://img.shields.io/npm/v/qool.svg?style=flat-square)](https://www.npmjs.org/package/qool) 
 
-## Features
-- durable queue
-- strict FIFO ordering of enqueue and dequeue operations
-- batching for level db mutating operations (del, put)
+- durable
+- strict FIFO ordering
+- embeddable
 
 ## Example
 
