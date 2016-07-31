@@ -1,6 +1,6 @@
 'use strict'
 
-const Qool = require('./lib/Qool.js')
+const Qool = require('./lib/Qool')
 const level = require('level-bytewise')
 
 const db = level('db')
@@ -13,12 +13,7 @@ for (let i = 0; i < SIZE / 4; i++) {
 }
 console.timeEnd('populate database')
 
-process.on('exit', () => {
-	console.timeEnd('test')
-})
-
 setTimeout(() => {
-	console.time('test')
 	
 	const stats = {
 		dequeue: 0,
@@ -29,6 +24,8 @@ setTimeout(() => {
 	const selector = 3
 
 	let count = 0
+
+	console.time('test')
 
 	for (let i = 0; i < SIZE; i++) {
 		if (i % selector === 0) {
@@ -58,6 +55,7 @@ setTimeout(() => {
 
 	function checkDone() {
 		if (count++ === SIZE - 1) {
+			console.timeEnd('test')
 			console.log('done')
 			console.log(stats)
 			process.exit(0)

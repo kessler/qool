@@ -65,7 +65,7 @@ describe('Qool', () => {
 		})
 	})
 
-	describe.skip('bench', () => {
+	describe('bench', () => {
 		it('enqueue', function (done) {
 			this.timeout(100000)
 
