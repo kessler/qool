@@ -16,9 +16,11 @@ let iterator = async.compose(
 	}
 )
 
-async.timesSeries(100, iterator, (err, results) => {
+const ITERATIONS = 100
+
+async.timesSeries(ITERATIONS, iterator, (err, results) => {
 	if (err) return console.error(err)
-	results.reduce((sum, member) => { return sum + member })
+	console.log('avg: %d', results.reduce((sum, member) => { return sum + member }) / ITERATIONS)
 })
 
 function all(cb) {
