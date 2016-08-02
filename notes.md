@@ -1,5 +1,6 @@
 # SmartBatch
-Based on UnifiedBatch, is the final version of the batching process into leveldb.
+An evolutions of UnifiedBatch.
+Does not have a fixed length, size of the batch varies on the number of ops performed within a single event loop tick
 Every batch first tries to fullfill all dequeues from the database with one read stream.
 Remaining dequeues are fullfiled from memory (if there are any)
 
