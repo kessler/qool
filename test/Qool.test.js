@@ -6,6 +6,8 @@ const level = require('level-bytewise')
 const rimraf = require('rimraf')
 const path = require('path')
 const cma = require('cumulative-moving-average')
+const SmartBatch = require('../lib/SmartBatch')
+const ReadOp = require('../lib/ReadOp')
 
 describe('Qool', () => {
 	let db, data, size, queue
@@ -50,22 +52,100 @@ describe('Qool', () => {
 
 		it('peeking at the top of the queue', (done) => {
 			queue.enqueue(1)
-			queue.enqueue(2)
-			setTimeout(() => {
-				queue.peek((err, result) => {
+			queue.enqueue(2, (err) => {
+				if (err) return done(err)
+				queue.peek((err, key, value) => {
 					if (err) return done(err)
-					expect(result).to.eql([1])
+					expect(value).to.eql(1)
+				})
+				queue.peek((err, key, value) => {
+					if (err) return done(err)
+					expect(value).to.eql(2)
 					done()
-				})	
-			}, 1000)
+				})
+			})
+		})
+
+		it('delete a specific item from the queue', (done) => {
+			let key = queue.generateKey()
+			queue.enqueueWithKey(key, 1, (err) => {
+				if (err) return done(err)
+				queue.delete(key, (err) => {
+					if (err) return done(err)
+					queue.peek((err, key, value) => {
+						if (err) return done(err)
+						expect(value).to.equal(undefined)
+						done()
+					})
+				})
+			})
+		})
+
+		it('leasing an item from the queue will make it invisible to other processes',  (done) => {
+			let key = queue.generateKey()
+			queue.enqueueWithKey(key, 1, (err) => {
+				if (err) return done(err)
+				queue.lease((err, leaseKey, value) => {
+					if (err) return done(err)
+					expect(key).to.eql(key)
+					expect(value).to.equal(1)
+					queue.dequeue((err, value) => {
+						if (err) return done(err)
+						expect(value).to.equal(undefined)
+						done()
+					})
+				})
+			})
+		})
+
+		it('a lease on an item will expire', function(done) {
+			this.timeout(4000)
+
+			let key = queue.generateKey()
+			queue.enqueueWithKey(key, 1, (err) => {
+				if (err) return done(err)
+
+				// lease for 1 second
+				queue.leaseWithTimeout(1000, (err, leaseKey, value) => {
+					setTimeout(() => {
+						queue.dequeue((err, value) => {
+							if (err) return done(err)
+							expect(value).to.equal(1)
+							done()
+						})
+					}, 2000)
+				})
+			})
+		})
+
+		it('a lease on an item will become permanent when calling delete()', function (done) {
+			this.timeout(4000)
+
+			let key = queue.generateKey()
+			queue.enqueueWithKey(key, 1, (err) => {
+				if (err) return done(err)
+
+				// lease for 1 second
+				queue.leaseWithTimeout(1000, (err, leaseKey, value) => {
+					queue.delete(key, (err) => {
+						setTimeout(() => {
+							queue.dequeue((err, value) => {
+								if (err) return done(err)
+								expect(value).to.equal(undefined)
+								done()
+							})
+						}, 2000)
+					})
+				})
+			})
 		})
 
 		it.skip('forwards any errors to the caller, if a callback is provided', () => {
-
+			
 		})
 	})
 
-	describe('bench', () => {
+	describe.skip('bench', () => {
 		it('enqueue', function (done) {
 			this.timeout(100000)
 

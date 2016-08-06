@@ -11,7 +11,9 @@
     "test": "mocha test/**/*.js"
   },
   "dependencies": {
-    "debug": "^2.2.0"
+    "bytewise": "^1.1.0",
+    "debug": "^2.2.0",
+    "digital-chain": "^2.0.0"
   },
   "devDependencies": {
     "async": "^2.0.1",

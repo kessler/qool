@@ -2,30 +2,35 @@
 
 const expect = require('chai').expect
 const SmartBatch = require('../lib/SmartBatch')
-const DequeueOp = require('../lib/DequeueOp')
-const EnqueueOp = require('../lib/EnqueueOp')
 
 const Readable = require('readable-stream').Readable
 const os = require('os')
 const _ = require('lodash')
-const topic = 'def'
 
 describe('SmartBatch', () => {
 	let batch, db
 
 	it('executes operations in fifo order', (done) => {
 		let ops = []
+
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				ops.push(value)
+			}
+		})
+
+		batch.push({
+			type: 'put',
+			key: 'e',
+			value: 5,
+			userCb: (err) => {
+				if (err) return done(err)
+				ops.push('enqueue')
+			}
+		})
 		
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			ops.push(value)
-		}))
-
-		batch.push(new EnqueueOp('e', 5, (err) => {
-			if (err) return done(err)
-			ops.push('enqueue')
-		}))
-
 		batch.execute((err) => {
 			if (err) return done(err)
 			expect(ops).to.have.length(2)
@@ -37,35 +42,55 @@ describe('SmartBatch', () => {
 	})
 
 	it('fullfills dequeue requests from memory when database is empty', (done) => {
-		
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			expect(value).to.equal(1)
-		}))
 
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			expect(value).to.equal(2)
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(1)
+			}
+		})
 
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			expect(value).to.equal(3)
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(2)
+			}
+		})
 
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			expect(value).to.equal(4)
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(3)
+			}
+		})
 
-		batch.push(new DequeueOp((err, value) => {
-			if (err) return done(err)
-			expect(value).to.equal(5)
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(4)
+			}
+		})
 
-		batch.push(new EnqueueOp('g', 5, (err) => {
-			if (err) return done(err)
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err, value) => {
+				if (err) return done(err)
+				expect(value).to.equal(5)
+			}
+		})
+
+		batch.push({
+			type: 'put',
+			key: 'g',
+			value: 5,
+			userCb: (err) => {
+				if (err) return done(err)
+			}
+		})
 
 		batch.execute((err) => {
 			if (err) return done(err)
@@ -77,13 +102,21 @@ describe('SmartBatch', () => {
 		db.error = new Error('test')
 
 		let ops = []
-		batch.push(new DequeueOp((err) => {
-			ops.push({ type: 'dequeue', error: err })
-		}))
+		batch.push({
+			type: 'del',
+			userCb: (err) => {
+				ops.push({ type: 'dequeue', error: err })
+			}
+		})
 
-		batch.push(new EnqueueOp('e', 5, (err) => {
-			ops.push({ type: 'enqueue', error: err })
-		}))
+		batch.push({
+			type: 'put',
+			key: 'e',
+			value: 5,
+			userCb: (err) => {
+				ops.push({ type: 'enqueue', error: err })
+			}
+		})
 
 		batch.execute((err) => {
 			expect(err).to.equal(db.error)
@@ -96,14 +129,13 @@ describe('SmartBatch', () => {
 
 			done()
 		})
-	})	
+	})
 
 	beforeEach(() => {
 		db = new MockDb()
 		batch = new SmartBatch(db)
 	})
 })
-
 class MockDb {
 	constructor() {
 		// this is not the best data structure to use 
@@ -113,12 +145,13 @@ class MockDb {
 			a: 1,
 			b: 2,
 			c: 3,
-			d: 4
+			d: 4,
+			e: 5
 		}
 	}
 
-	createReadStream() {
-		return new MockStream(this.data)
+	createReadStream(opts) {
+		return new MockStream(this.data, opts)
 	}
 
 	batch(data, cb) {
@@ -145,16 +178,19 @@ class MockDb {
 
 class MockStream extends Readable {
 
-	constructor(data) {
+	constructor(data, opts) {
 		super({ objectMode: true })
-
+		this._keys = Object.keys(data)
+		this._limit = opts.limit || this._keys.length
 		this._data = data
 	}
 
 	_read(size) {
-		_.forEach(this._data, (v, k) => {
-			this.push({ key: k, value: v})
-		})
+		for (let i = 0; i < this._limit; i++) {
+			let key = this._keys[i]
+			let value = this._data[key]
+			this.push({ key, value })
+		}
 
 		this.push(null)
 		setImmediate(() => {
