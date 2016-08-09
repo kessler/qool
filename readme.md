@@ -25,6 +25,8 @@ queue.enqueue('b', (err) => {})
 queue.dequeue()
 queue.dequeue((err, value) => {})
 ```
+##### notes
+Enqueue and Dequeue are batched under the hood, so callbacks are invoked synchronously. This means that you can only include a last callback and forgo all the others for Enqueues and Dequeues that happen in the same tick
 
 ### Lease
 ```javascript
@@ -46,8 +48,9 @@ queue.lease((err, leaseKey, value) => {
     })
 })
 
+// TBD
 // lease with a non default timeout
-queue.leaseWithTimeout(1000 * 2, (err, leaseKey, value) => {})
+//queue.leaseWithTimeout(1000 * 2, (err, leaseKey, value) => {})
 ```
 
 ### Peek
@@ -61,12 +64,12 @@ const queue = Qool.create(db)
 queue.enqueue('a')
 queue.enqueue('b', (err) => {})
 
-queue.peek((err, key, value) => {
+queue.peek((err, value) => {
     // value === 'a'
 })
 
-queue.peek((err, key, value) => {
-    // value === 'b'
+queue.peekMany((err, results) => {
+    // results === [{ key: ..., value: 'a' }, { key: ..., value: 'b' }]
 })
 ```
 

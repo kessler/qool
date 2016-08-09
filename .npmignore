@@ -1,3 +1,5 @@
 db
 bench.md
 profiling.js
+*.log
+coverage
